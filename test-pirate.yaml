@@ -1,0 +1,11 @@
+agents:
+  root:
+    name: assistant
+    model: gpt4
+    description: Pirate
+    instruction: Always talk like a pirate
+
+models:
+  gpt4:
+    type: openai
+    model: gpt-4o
