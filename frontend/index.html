@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Insights - Ask Captain Insights</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        /* [Previous CSS remains the same - keeping it unchanged for brevity] */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #2d2d2d;
+            padding: 20px;
+            border-right: 1px solid #404040;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .org-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #404040;
+        }
+
+        .org-icon {
+            width: 32px;
+            height: 32px;
+            background: #6366f1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-weight: bold;
+        }
+
+        .nav-section {
+            margin-bottom: 30px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 6px;
+            color: #a0a0a0;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: #404040;
+            color: #ffffff;
+        }
+
+        .nav-item.active {
+            background: #6366f1;
+            color: #ffffff;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+        }
+
+        .quick-actions {
+            margin-top: auto;
+        }
+
+        .quick-actions h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #a0a0a0;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .action-button {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #404040;
+            border-radius: 8px;
+            color: #ffffff;
+            text-decoration: none;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .action-button:hover {
+            background: #4a4a4a;
+        }
+
+        .action-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a1a;
+        }
+
+        .chat-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #404040;
+        }
+
+        .chat-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .chat-subtitle {
+            color: #a0a0a0;
+            font-size: 14px;
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .message-avatar.captain {
+            background: #6366f1;
+            color: white;
+        }
+
+        .message-avatar.user {
+            background: #22c55e;
+            color: white;
+            margin-right: 0;
+            margin-left: 12px;
+        }
+
+        .message-content {
+            background: #2d2d2d;
+            padding: 15px 20px;
+            border-radius: 12px;
+            max-width: 70%;
+            line-height: 1.6;
+        }
+
+        .message.user .message-content {
+            background: #1e40af;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        /* Dashboard Styles */
+        .dashboard-container {
+            background: #2d2d2d;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid #404040;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .dashboard-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .dashboard-subtitle {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-top: 4px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: #404040;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #a0a0a0;
+            text-transform: uppercase;
+        }
+
+        .critical { color: #ef4444; }
+        .high { color: #f97316; }
+        .medium { color: #eab308; }
+        .low { color: #22c55e; }
+
+        .input-area {
+            padding: 20px 30px;
+            border-top: 1px solid #404040;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .input-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .message-input {
+            width: 100%;
+            padding: 15px 20px;
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .message-input:focus {
+            border-color: #6366f1;
+        }
+
+        .send-button {
+            width: 44px;
+            height: 44px;
+            background: #6366f1;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .send-button:hover {
+            background: #5856eb;
+        }
+
+        .send-button:disabled {
+            background: #404040;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 15px 20px;
+            background: #2d2d2d;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #6366f1;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="org-header">
+            <div class="org-icon">🐳</div>
+            <div>
+                <div style="font-weight: 600;">Docker Insights</div>
+                <div style="font-size: 12px; color: #a0a0a0;">Organization</div>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-item active">
+                <span class="nav-icon">🤖</span>
+                Docker Insights
+            </div>
+            <div class="nav-item">
+                <span class="nav-icon">🐳</span>
+                Docker Desktop
+            </div>
+            <div class="nav-item">
+                <span class="nav-icon">🔒</span>
+                Security & Access
+            </div>
+            <div class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                Organization Settings
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <h3>Quick Actions</h3>
+            <div class="action-button" onclick="sendQuickMessage('What\\'s our current security posture?')">
+                <span class="action-icon">📊</span>
+                Weekly Summary
+            </div>
+            <div class="action-button" onclick="sendQuickMessage('Create a vulnerability trends dashboard')">
+                <span class="action-icon">📈</span>
+                Vulnerability Trends
+            </div>
+            <div class="action-button" onclick="sendQuickMessage('Show me our most critical vulnerabilities')">
+                <span class="action-icon">🔍</span>
+                Security Audit
+            </div>
+            <div class="action-button" onclick="sendQuickMessage('Show me team performance metrics')">
+                <span class="action-icon">👥</span>
+                Team Analysis
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="chat-header">
+            <div class="chat-title">Ask Captain Insights</div>
+            <div class="chat-subtitle">Your AI assistant for Docker insights and analytics</div>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message">
+                <div class="message-avatar captain">⚓</div>
+                <div class="message-content">
+                    <div>Ahoy! I'm Captain Insights, your Docker AI assistant. I can help you navigate your Docker metrics, create custom dashboards, generate reports, and analyze your security posture. What would you like to explore today?</div>
+                    <div class="message-time">9:13:02 AM</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-container">
+                <input 
+                    type="text" 
+                    class="message-input" 
+                    id="messageInput"
+                    placeholder="Ask Captain Insights to create dashboards, generate reports, or analyze your Docker insights..."
+                >
+            </div>
+            <button class="send-button" id="sendButton" onclick="sendMessage()">
+                <span>→</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+
+        // Real vulnerability data from your Scout API
+        const vulnerabilityData = {
+            dates: ['Jul 9', 'Jul 10', 'Jul 11', 'Jul 12', 'Jul 13', 'Jul 14', 'Jul 15', 'Jul 16'],
+            critical: [92, 92, 91, 92, 92, 92, 91, 92],
+            high: [349, 354, 352, 354, 354, 354, 354, 356],
+            medium: [613, 617, 612, 620, 620, 620, 613, 620],
+            low: [276, 277, 277, 277, 277, 281, 281, 281]
+        };
+
+        function addMessage(content, isUser = false) {
+            const message = document.createElement('div');
+            message.className = `message ${isUser ? 'user' : ''}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `message-avatar ${isUser ? 'user' : 'captain'}`;
+            avatar.textContent = isUser ? 'U' : '⚓';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            const messageText = document.createElement('div');
+            messageText.innerHTML = content;
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.textContent = new Date().toLocaleTimeString();
+            
+            messageContent.appendChild(messageText);
+            messageContent.appendChild(messageTime);
+            
+            if (isUser) {
+                message.appendChild(messageContent);
+                message.appendChild(avatar);
+            } else {
+                message.appendChild(avatar);
+                message.appendChild(messageContent);
+            }
+            
+            chatContainer.appendChild(message);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function createVulnerabilityDashboard() {
+            const dashboardId = 'vuln-dashboard-' + Date.now();
+            const chartId = 'chart-' + Date.now();
+            
+            const dashboardHtml = `
+                <div class="dashboard-container" id="${dashboardId}">
+                    <div class="dashboard-header">
+                        <div>
+                            <div class="dashboard-title">🔒 Vulnerability Trends Dashboard</div>
+                            <div class="dashboard-subtitle">7-day trend analysis of security vulnerabilities</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value critical">92</div>
+                            <div class="metric-label">Critical</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value high">356</div>
+                            <div class="metric-label">High</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value medium">620</div>
+                            <div class="metric-label">Medium</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value low">281</div>
+                            <div class="metric-label">Low</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return { dashboardHtml, chartId };
+        }
+
+        function renderVulnerabilityChart(chartId) {
+            setTimeout(() => {
+                const ctx = document.getElementById(chartId);
+                if (!ctx) return;
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: vulnerabilityData.dates,
+                        datasets: [
+                            {
+                                label: 'Critical',
+                                data: vulnerabilityData.critical,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.3,
+                                fill: false
+                            },
+                            {
+                                label: 'High',
+                                data: vulnerabilityData.high,
+                                borderColor: '#f97316',
+                                backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                                tension: 0.3,
+                                fill: false
+                            },
+                            {
+                                label: 'Medium',
+                                data: vulnerabilityData.medium,
+                                borderColor: '#eab308',
+                                backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                                tension: 0.3,
+                                fill: false
+                            },
+                            {
+                                label: 'Low',
+                                data: vulnerabilityData.low,
+                                borderColor: '#22c55e',
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                tension: 0.3,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#ffffff'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: '#a0a0a0'
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#a0a0a0'
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            }
+                        }
+                    }
+                });
+            }, 100);
+        }
+
+        function showTyping() {
+            const typing = document.createElement('div');
+            typing.className = 'message';
+            typing.id = 'typing-indicator';
+            typing.innerHTML = `
+                <div class="message-avatar captain">⚓</div>
+                <div class="typing-indicator" style="display: block;">
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(typing);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function hideTyping() {
+            const typing = document.getElementById('typing-indicator');
+            if (typing) typing.remove();
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            messageInput.value = '';
+            sendButton.disabled = true;
+            
+            showTyping();
+            
+            // Simulate API call - replace with actual backend call
+            setTimeout(() => {
+                hideTyping();
+                
+                // Mock response based on message content
+                let response = getDockerInsightsResponse(message);
+                addMessage(response);
+                
+                sendButton.disabled = false;
+            }, 2000);
+        }
+
+        function sendQuickMessage(message) {
+            messageInput.value = message;
+            sendMessage();
+        }
+
+        function getDockerInsightsResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Check for thank you messages first
+            if (lowerMessage.includes('thank you') || lowerMessage.includes('thanks') || lowerMessage.includes('thx')) {
+                const thankYouResponses = [
+                    `<strong>⚓ You're most welcome, sailor!</strong><br><br>
+                     It's been my pleasure to help you navigate these Docker waters! Remember, a good captain is always here when the crew needs guidance.<br><br>
+                     May your containers be secure and your deployments swift! Fair winds and following seas! 🌊⛵`,
+                    
+                    `<strong>🐳 Ahoy! Happy to help, matey!</strong><br><br>
+                     That's what Captain Insights is here for - to keep your Docker fleet sailing smoothly and securely! <br><br>
+                     Until our next voyage together, keep those vulnerabilities at bay and those builds running fast! ⚓`,
+                    
+                    `<strong>⚓ Aye, 'twas nothing!</strong><br><br>
+                     A captain's duty is to keep the crew informed and the ship secure! I'm always ready to chart a course through your Docker metrics.<br><br>
+                     Remember: smooth seas never made skilled sailors - but good insights make great DevOps teams! 🚢✨`,
+                    
+                    `<strong>🌊 You're very welcome, crew member!</strong><br><br>
+                     It brings joy to this old captain's heart to see the crew mastering their Docker skills! Keep up the excellent work on securing those containers.<br><br>
+                     I'll be here whenever you need to explore the vast ocean of Docker insights! ⚓🐳`
+                ];
+                
+                // Return a random thank you response
+                return thankYouResponses[Math.floor(Math.random() * thankYouResponses.length)];
+            }
+            
+            if (lowerMessage.includes('dashboard') || lowerMessage.includes('trends') || lowerMessage.includes('chart')) {
+                const { dashboardHtml, chartId } = createVulnerabilityDashboard();
+                
+                // Render the chart after the HTML is added
+                renderVulnerabilityChart(chartId);
+                
+                return `
+                    <strong>📈 Aye aye, Captain! I've charted your vulnerability trends!</strong><br><br>
+                    Here's your custom dashboard showing the 7-day voyage of vulnerabilities across your Docker fleet:
+                    ${dashboardHtml}
+                    <strong>Key Observations:</strong><br>
+                    • Critical vulnerabilities have remained steady around 92<br>
+                    • High severity issues increased slightly from 349 to 356<br>
+                    • Medium vulnerabilities show some fluctuation (612-620 range)<br>
+                    • Low severity issues stable around 277-281<br><br>
+                    The waters show relatively stable patterns - no major storms on the horizon! ⚓
+                `;
+            } else if (lowerMessage.includes('security') || lowerMessage.includes('posture')) {
+                return `
+                    <strong>🔒 Ahoy! Here's your security overview:</strong><br><br>
+                    Current status of your Docker fleet:<br>
+                    • <span style="color: #ef4444;">92 Critical vulnerabilities</span> - all hands on deck! 🚨<br>
+                    • <span style="color: #f97316;">356 High severity issues</span><br>
+                    • 620 Medium severity vulnerabilities<br>
+                    • 281 Low severity issues<br><br>
+                    <strong>Captain's Orders:</strong><br>
+                    • Fix 500 images with critical/high vulnerabilities<br>
+                    • Address 31 images running as root user<br>
+                    • Update 17 images with outdated base images<br><br>
+                    Want me to create a dashboard to track these trends over time? ⚓
+                `;
+            } else if (lowerMessage.includes('critical') || lowerMessage.includes('vulnerabilities')) {
+                return `
+                    <strong>⚠️ Critical Vulnerabilities on the Horizon!</strong><br><br>
+                    Top threats requiring immediate attention:<br>
+                    • <strong>CVE-2024-5171</strong> - Critical severity<br>
+                    • <strong>CVE-2023-38545</strong> - Critical, spotted in 3 images<br>
+                    • <strong>CVE-2017-18342</strong> - Critical, found in 2 images<br><br>
+                    <strong>Impact Assessment:</strong> 500 images with fixable critical/high vulnerabilities<br>
+                    <strong>Captain's Recommendation:</strong> Set sail on CVE-2023-38545 first - it's affecting multiple vessels! 🚢
+                `;
+            } else if (lowerMessage.includes('team') || lowerMessage.includes('performance')) {
+                return `
+                    <strong>👥 Crew Performance Report!</strong><br><br>
+                    Docker usage across your fleet:<br>
+                    • 61 total images being monitored<br>
+                    • 676 total CVEs identified across all vessels<br>
+                    • Multiple policy violations indicate crew needs more training<br><br>
+                    <strong>Captain's Recommendations:</strong><br>
+                    • Implement security scanning in CI/CD pipeline<br>
+                    • Provide Docker security best practices training for the crew<br>
+                    • Set up automated policy enforcement<br><br>
+                    A well-trained crew makes for smooth sailing! 🌊
+                `;
+            } else {
+                return `
+                    <strong>Welcome aboard, sailor! ⚓</strong><br><br>
+                    I'm Captain Insights, and I can help you navigate these Docker waters:<br><br>
+                    🔒 <strong>Security Analysis</strong> - Chart the dangerous waters of vulnerabilities<br>
+                    📊 <strong>Custom Dashboards</strong> - Create visual charts of your metrics<br>
+                    📈 <strong>Vulnerability Trends</strong> - Track security improvements over time<br>
+                    👥 <strong>Team Analytics</strong> - Compare your crew's performance<br><br>
+                    Try asking me to "create a vulnerability trends dashboard" or about your security posture! 🚢
+                `;
+            }
+        }
+
+        // Enter key support
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Auto-focus input
+        messageInput.focus();
+    </script>
+</body>
+</html>
